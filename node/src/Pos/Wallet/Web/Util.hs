@@ -23,23 +23,22 @@ import           Pos.Util.Util              (maybeThrow)
 import           Pos.Wallet.Web.Assurance   (AssuranceLevel (HighAssurance),
                                              assuredBlockDepth)
 import           Pos.Wallet.Web.ClientTypes (AccountId (..), Addr, CId,
-                                             CWAddressMeta (..), Wal,
-                                             cwAssurance)
+                                             CWAddressMeta (..), Wal, cwAssurance)
 
 
 import           Pos.Wallet.Web.Error       (WalletError (..))
-import           Pos.Wallet.Web.State       (AddressLookupMode, WebWalletModeDB,
-                                             getAccountIds, getAccountWAddresses,
-                                             getWalletMeta)
+import           Pos.Wallet.Web.State       (AddressLookupMode, NeedSorting (..),
+                                             WebWalletModeDB, getAccountIds,
+                                             getAccountWAddresses, getWalletMeta)
 
 getWalletAccountIds :: WebWalletModeDB ctx m => CId Wal -> m [AccountId]
 getWalletAccountIds cWalId = filter ((== cWalId) . aiWId) <$> getAccountIds
 
 getAccountAddrsOrThrow
     :: (WebWalletModeDB ctx m, MonadThrow m)
-    => AddressLookupMode -> AccountId -> m [CWAddressMeta]
-getAccountAddrsOrThrow mode accId =
-    getAccountWAddresses mode accId >>= maybeThrow noWallet
+    => AddressLookupMode -> NeedSorting -> AccountId -> m [CWAddressMeta]
+getAccountAddrsOrThrow mode needSorting accId =
+    getAccountWAddresses mode needSorting accId >>= maybeThrow noWallet
   where
     noWallet =
         RequestError $
@@ -49,7 +48,7 @@ getWalletAddrMetas
     :: (WebWalletModeDB ctx m, MonadThrow m)
     => AddressLookupMode -> CId Wal -> m [CWAddressMeta]
 getWalletAddrMetas lookupMode cWalId =
-    concatMapM (getAccountAddrsOrThrow lookupMode) =<<
+    concatMapM (getAccountAddrsOrThrow lookupMode (NeedSorting False)) =<<
     getWalletAccountIds cWalId
 
 getWalletAddrs
