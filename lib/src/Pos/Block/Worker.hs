@@ -225,8 +225,7 @@ recoveryTriggerWorkerImpl diffusion = do
         doTrigger <- needTriggerRecovery <$> getSyncStatusK
         when doTrigger $ do
             logInfo "Triggering recovery because we need it"
-            triggerRecovery enqueueMsg
-
+            triggerRecovery diffusion
 
         -- Sometimes we want to trigger recovery just in case. Maybe
         -- we're just 5 slots late, but nobody wants to send us
