@@ -33,6 +33,7 @@ import           Pos.Core.Txp (TxPayload, TxProof, mkTxProof)
 import           Pos.Core.Update (UpdatePayload, UpdateProof, mkUpdateProof)
 import           Pos.Crypto (Hash, PublicKey, hash)
 
+
 instance ( HasConfiguration
          , Bi BlockHeader
          , Bi (BodyProof MainBlockchain)

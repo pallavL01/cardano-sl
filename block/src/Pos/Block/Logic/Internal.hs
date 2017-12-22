@@ -37,8 +37,8 @@ import           Pos.Block.BListener (MonadBListener)
 import           Pos.Block.Slog (BypassSecurityCheck (..), MonadSlogApply, MonadSlogBase,
                                  ShouldCallBListener, slogApplyBlocks, slogRollbackBlocks)
 import           Pos.Block.Types (Blund, Undo (undoDlg, undoTx, undoUS))
-import           Pos.Core (HasConfiguration, IsGenesisHeader, IsMainHeader, epochIndexL, gbBody,
-                           gbHeader, headerHash)
+import           Pos.Core (ComponentBlock (..), HasConfiguration, IsGenesisHeader, IsMainHeader,
+                           epochIndexL, gbBody, gbHeader, headerHash)
 import           Pos.Core.Block (Block, Body, GenesisBlock, MainBlock, MainBlockchain, mbDlgPayload,
                                  mbSscPayload, mbTxPayload, mbUpdatePayload)
 import           Pos.DB (MonadDB, MonadDBRead, MonadGState, SomeBatchOp (..))
@@ -233,7 +233,13 @@ rollbackBlocksUnsafe bsc scb toRollback = do
 toTxpBlock
     :: HasConfiguration
     => Block -> TxpBlock
-toTxpBlock = bimap convertGenesis (convertMain mbTxPayload)
+toTxpBlock block =  case block of
+    Left a  -> ComponentBlockGenesis (convertGenesis a)
+    Right a -> ComponentBlockMain { bcmHeader = fst result,  bcmPayload = snd result }
+        where result = convertMain mbTxPayload a
+
+    -- bimap convertGenesis (convertMain mbTxPayload)
+
 
 -- [CSL-1156] Yes, definitely need something more elegant.
 toTxpBlund

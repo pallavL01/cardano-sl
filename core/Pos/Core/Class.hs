@@ -117,6 +117,7 @@ instance (HasEpochOrSlot a, HasEpochOrSlot b) =>
          HasEpochOrSlot (Either a b) where
     getEpochOrSlot = either getEpochOrSlot getEpochOrSlot
 
+
 ----------------------------------------------------------------------------
 -- Classes for headers
 ----------------------------------------------------------------------------

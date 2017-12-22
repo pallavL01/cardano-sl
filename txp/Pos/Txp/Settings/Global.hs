@@ -4,14 +4,12 @@
 -- | Global settings of Txp.
 
 module Pos.Txp.Settings.Global
-       ( ComponentBlock (..)
-       , TxpGlobalVerifyMode
+       ( TxpGlobalVerifyMode
        , TxpGlobalApplyMode
        , TxpGlobalRollbackMode
        , TxpBlock
        , TxpBlund
        , TxpGlobalSettings (..)
-       , UpdateBlock
        ) where
 
 import           Universum
@@ -19,13 +17,12 @@ import           Universum
 import           Control.Monad.Except (MonadError)
 import           System.Wlog (WithLogger)
 
-import           Pos.Core (HasConfiguration, IsGenesisHeader, IsMainHeader, UpdatePayload)
+import           Pos.Core (ComponentBlock, HasConfiguration, HasHeaderHash (..))
 import           Pos.Core.Txp (TxPayload, TxpUndo)
 import           Pos.DB (MonadDBRead, MonadGState, SomeBatchOp)
 import           Pos.Slotting (MonadSlots)
 import           Pos.Txp.Toil.Failure (ToilVerFailure)
 import           Pos.Util.Chrono (NE, NewestFirst, OldestFirst)
-import           Pos.Util.Some (Some)
 
 type TxpCommonMode m =
     ( WithLogger m
@@ -50,19 +47,12 @@ type TxpGlobalRollbackMode m = TxpCommonMode m
 -- type TxpBlock = Either (Some IsGenesisHeader) (Some IsMainHeader, TxPayload)
 -- type TxpBlund = (TxpBlock, TxpUndo)
 
--- | Representation of 'Block' passed to a component.
-data ComponentBlock payload =
-    ComponentBlockGenesis (Some IsGenesisHeader)
-    | ComponentBlockMain
-       { bcmHeader  :: !(Some IsMainHeader)
-       , bcmPayload :: !payload }
-
--- deriving instance Show a => Show (ComponentBlock a)
 
 type TxpBlock = ComponentBlock TxPayload
-type UpdateBlock = ComponentBlock UpdatePayload
-type UndoBlock = ComponentBlock TxpUndo
-type TxpBlund = (TxpBlock, UndoBlock)
+type TxpBlund = (TxpBlock, TxpUndo)
+
+instance HasHeaderHash TxpBlock where
+    headerHash     =  headerHash
 
 data TxpGlobalSettings = TxpGlobalSettings
     { -- | Verify a chain of payloads from blocks and return txp undos

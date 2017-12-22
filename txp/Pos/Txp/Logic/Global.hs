@@ -11,7 +11,7 @@ module Pos.Txp.Logic.Global
        , runToilAction
        ) where
 
-import           Control.Lens (choosing)
+import           Control.Lens (lens)
 import           Control.Monad.Except (runExceptT)
 import           Data.Default (Default)
 import qualified Data.HashMap.Strict as HM
@@ -19,22 +19,36 @@ import qualified Data.List.NonEmpty as NE
 import           Formatting (build, sformat, (%))
 import           Universum
 
-import           Pos.Core.Class (epochIndexL)
+import           Pos.Core.Block.Union (ComponentBlock (..))
+import           Pos.Core.Class (HasEpochIndex, epochIndexL)
 import           Pos.Core.Configuration (HasConfiguration)
 import           Pos.Core.Txp (TxAux, TxUndo, TxpUndo)
 import           Pos.DB (MonadDBRead, SomeBatchOp (..))
 import           Pos.Exception (assertionFailed)
 import           Pos.Txp.Base (flattenTxPayload)
 import qualified Pos.Txp.DB as DB
-import           Pos.Txp.Settings.Global (ComponentBlock (..), TxpBlock, TxpBlund,
-                                          TxpGlobalApplyMode, TxpGlobalRollbackMode,
-                                          TxpGlobalSettings (..), TxpGlobalVerifyMode, UpdateBlock)
+import           Pos.Txp.Settings.Global (TxpBlock, TxpBlund, TxpGlobalApplyMode,
+                                          TxpGlobalRollbackMode, TxpGlobalSettings (..),
+                                          TxpGlobalVerifyMode)
 import           Pos.Txp.Toil (DBToil, GenericToilModifier (..), GlobalApplyToilMode,
                                StakesView (..), ToilModifier, ToilT, applyToil, rollbackToil,
                                runDBToil, runToilTGlobal, verifyToil)
 import           Pos.Util.AssertMode (inAssertMode)
 import           Pos.Util.Chrono (NE, NewestFirst (..), OldestFirst (..))
 import qualified Pos.Util.Modifier as MM
+
+-- TODO: Move this instance to appropriate place ?
+instance HasEpochIndex (ComponentBlock a) where
+    epochIndexL = lens getter setter
+      where
+        getter (ComponentBlockGenesis genesisHeader) =
+            genesisHeader ^. epochIndexL
+        getter (ComponentBlockMain mainHeader _) = mainHeader ^. epochIndexL
+        setter (ComponentBlockGenesis genesisHeader) e =
+            ComponentBlockGenesis (genesisHeader & epochIndexL .~ e)
+        setter (ComponentBlockMain mainHeader payload) e =
+            ComponentBlockMain (mainHeader & epochIndexL .~ e) payload
+
 
 -- | Settings used for global transactions data processing used by a
 -- simple full node.
@@ -51,7 +65,7 @@ verifyBlocks
        TxpGlobalVerifyMode m
     => Bool -> OldestFirst NE TxpBlock -> m (OldestFirst NE TxpUndo)
 verifyBlocks verifyAllIsKnown newChain = do
-    let epoch = NE.last (getOldestFirst newChain) ^. choosing epochIndexL (_1 . epochIndexL)
+    let epoch = NE.last (getOldestFirst newChain) ^. epochIndexL  -- choosing epochIndexL (_1 . epochIndexL)
     fst <$> runToilAction @_ @() (mapM (verifyDo epoch) newChain)
   where
     verifyDo epoch = verifyToil epoch verifyAllIsKnown . convertPayload
@@ -133,4 +147,5 @@ runToilAction action = runDBToil . runToilTGlobal $ action
 
 -- Zip block's TxAuxes and corresponding TxUndos.
 blundToAuxNUndo :: TxpBlund -> [(TxAux, TxUndo)]
-blundToAuxNUndo (payload, undo) = zip (flattenTxPayload (bcmPayload payload)) (bcmPayload undo)
+blundToAuxNUndo (ComponentBlockGenesis _ , _)        = []
+blundToAuxNUndo (ComponentBlockMain _ payload, undo) = zip (flattenTxPayload payload) undo
