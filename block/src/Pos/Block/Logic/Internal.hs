@@ -238,8 +238,20 @@ toTxpBlock block =  case block of
     Right a -> ComponentBlockMain { bcmHeader = fst result,  bcmPayload = snd result }
         where result = convertMain mbTxPayload a
 
-    -- bimap convertGenesis (convertMain mbTxPayload)
+-- toComponentBlock :: HasConfiguration => (MainBlock -> payload) -> Block -> ComponentBlock payload
+-- toComponentBlock fnc block = _
 
+-- toTxpBlock
+--     :: HasConfiguration
+--     => Block -> TxpBlock
+-- toTxpBlock = toComponentBlock (view mainBlockTxPayload)
+
+-- toUpdateBlock
+--     :: HasConfiguration
+--     => Block -> UpdateBlock
+-- toUpdateBlock = toComponentBlock (view mainBlockUpdatePayload)
+
+-- toTxpBlock = toComponentBlock (view mainBlockTxPayload)
 
 -- [CSL-1156] Yes, definitely need something more elegant.
 toTxpBlund

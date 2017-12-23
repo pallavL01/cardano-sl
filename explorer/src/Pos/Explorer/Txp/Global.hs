@@ -74,7 +74,7 @@ applyBlund txpBlund = do
                                   , siSlot  = minBound
                                   -- ^ Genesis block doesn't have a slot, set to minBound
                                   }
-            ComponentBlockMain mainBlock _  -> mainBlock ^. _1 . headerSlotL
+            ComponentBlockMain mainBlock _  -> mainBlock ^. headerSlotL
 
     -- Get the timestamp from that information.
     mTxTimestamp <- getSlotStart slotId

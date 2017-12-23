@@ -11,7 +11,6 @@ module Pos.Txp.Logic.Global
        , runToilAction
        ) where
 
-import           Control.Lens (lens)
 import           Control.Monad.Except (runExceptT)
 import           Data.Default (Default)
 import qualified Data.HashMap.Strict as HM
@@ -20,7 +19,7 @@ import           Formatting (build, sformat, (%))
 import           Universum
 
 import           Pos.Core.Block.Union (ComponentBlock (..))
-import           Pos.Core.Class (HasEpochIndex, epochIndexL)
+import           Pos.Core.Class (epochIndexL)
 import           Pos.Core.Configuration (HasConfiguration)
 import           Pos.Core.Txp (TxAux, TxUndo, TxpUndo)
 import           Pos.DB (MonadDBRead, SomeBatchOp (..))
@@ -36,18 +35,6 @@ import           Pos.Txp.Toil (DBToil, GenericToilModifier (..), GlobalApplyToil
 import           Pos.Util.AssertMode (inAssertMode)
 import           Pos.Util.Chrono (NE, NewestFirst (..), OldestFirst (..))
 import qualified Pos.Util.Modifier as MM
-
--- TODO: Move this instance to appropriate place ?
-instance HasEpochIndex (ComponentBlock a) where
-    epochIndexL = lens getter setter
-      where
-        getter (ComponentBlockGenesis genesisHeader) =
-            genesisHeader ^. epochIndexL
-        getter (ComponentBlockMain mainHeader _) = mainHeader ^. epochIndexL
-        setter (ComponentBlockGenesis genesisHeader) e =
-            ComponentBlockGenesis (genesisHeader & epochIndexL .~ e)
-        setter (ComponentBlockMain mainHeader payload) e =
-            ComponentBlockMain (mainHeader & epochIndexL .~ e) payload
 
 
 -- | Settings used for global transactions data processing used by a
@@ -65,7 +52,7 @@ verifyBlocks
        TxpGlobalVerifyMode m
     => Bool -> OldestFirst NE TxpBlock -> m (OldestFirst NE TxpUndo)
 verifyBlocks verifyAllIsKnown newChain = do
-    let epoch = NE.last (getOldestFirst newChain) ^. epochIndexL  -- choosing epochIndexL (_1 . epochIndexL)
+    let epoch = NE.last (getOldestFirst newChain) ^. epochIndexL
     fst <$> runToilAction @_ @() (mapM (verifyDo epoch) newChain)
   where
     verifyDo epoch = verifyToil epoch verifyAllIsKnown . convertPayload
