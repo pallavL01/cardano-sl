@@ -285,6 +285,7 @@ executable cardano-launcher
                      , optparse-applicative
                      , process
                      , safe-exceptions
+                     , serokell-util
                      , silently
                      , system-filepath
                      , text

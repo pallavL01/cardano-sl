@@ -17,6 +17,7 @@ import           Control.Concurrent           (modifyMVar_)
 import           Control.Concurrent.Async.Lifted.Safe
     (Async, async, cancel, poll, wait, waitAny, withAsyncWithUnmask)
 import           Control.Exception.Safe       (tryAny)
+import qualified Control.Exception.Safe as E
 import           Control.Lens                 (makeLensesWith)
 import qualified Data.ByteString.Lazy         as BS.L
 import           Data.List                    (isSuffixOf)
@@ -35,6 +36,7 @@ import           System.Directory             (createDirectoryIfMissing, doesFil
 import           System.Environment           (getExecutablePath)
 import           System.Exit                  (ExitCode (..))
 import           System.FilePath              (normalise, (</>))
+import Serokell.Util ()
 import qualified System.IO                    as IO
 import           System.Process               (ProcessHandle, readProcessWithExitCode)
 import qualified System.Process               as Process
@@ -248,6 +250,7 @@ main =
   -- don't even exist.
   Silently.hSilence [stdout, stderr] $
 #endif
+  logException $
   do
     LO {..} <- getLauncherOptions
     let realNodeArgs = addConfigurationOptions loConfiguration $
@@ -265,6 +268,7 @@ main =
                       set Log.ltFiles [Log.HandlerWrap "launcher" Nothing] .
                       set Log.ltSeverity (Just Log.Debug)
     Log.usingLoggerName "launcher" $
+
         withConfigurations loConfiguration $
         case loWalletPath of
             Nothing -> do
@@ -293,7 +297,14 @@ main =
                     , loUpdateArchive)
                     loNodeTimeoutSec
                     loReportServer
+                logNotice "Finished clientScenario"
+    writeFile "bardaq" "patak"
   where
+    logException :: IO a -> IO a
+    logException = E.handleAsync (\e -> handler e >> E.throw e)
+      where
+        handler :: E.SomeException -> IO ()
+        handler = writeFile "loggedException" . pretty
     -- We propagate configuration options to the node executable,
     -- because we almost certainly want to use the same configuration
     -- and don't want to pass the same options twice.  However, if
