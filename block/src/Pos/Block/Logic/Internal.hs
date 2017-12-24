@@ -38,9 +38,10 @@ import           Pos.Block.Slog (BypassSecurityCheck (..), MonadSlogApply, Monad
                                  ShouldCallBListener, slogApplyBlocks, slogRollbackBlocks)
 import           Pos.Block.Types (Blund, Undo (undoDlg, undoTx, undoUS))
 import           Pos.Core (ComponentBlock (..), HasConfiguration, IsGenesisHeader, IsMainHeader,
-                           epochIndexL, gbBody, gbHeader, headerHash)
+                           epochIndexL, gbBody, gbHeader, headerHash, mainBlockTxPayload,
+                           mainBlockUpdatePayload)
 import           Pos.Core.Block (Block, Body, GenesisBlock, MainBlock, MainBlockchain, mbDlgPayload,
-                                 mbSscPayload, mbTxPayload, mbUpdatePayload)
+                                 mbSscPayload, mbUpdatePayload)
 import           Pos.DB (MonadDB, MonadDBRead, MonadGState, SomeBatchOp (..))
 import qualified Pos.DB.GState.Common as GS (writeBatchGState)
 import           Pos.Delegation.Class (MonadDelegation)
@@ -229,29 +230,20 @@ rollbackBlocksUnsafe bsc scb toRollback = do
 -- Garbage
 ----------------------------------------------------------------------------
 
--- [CSL-1156] Need something more elegant.
+toComponentBlock :: HasConfiguration => (MainBlock -> payload) -> Block -> ComponentBlock payload
+toComponentBlock fnc block = case block of
+    Left a  -> ComponentBlockGenesis (convertGenesis a)
+    Right a -> ComponentBlockMain (Some $ a ^. gbHeader) (fnc a)
+
 toTxpBlock
     :: HasConfiguration
     => Block -> TxpBlock
-toTxpBlock block =  case block of
-    Left a  -> ComponentBlockGenesis (convertGenesis a)
-    Right a -> ComponentBlockMain { bcmHeader = fst result,  bcmPayload = snd result }
-        where result = convertMain mbTxPayload a
+toTxpBlock = toComponentBlock (view mainBlockTxPayload)
 
--- toComponentBlock :: HasConfiguration => (MainBlock -> payload) -> Block -> ComponentBlock payload
--- toComponentBlock fnc block = _
-
--- toTxpBlock
---     :: HasConfiguration
---     => Block -> TxpBlock
--- toTxpBlock = toComponentBlock (view mainBlockTxPayload)
-
--- toUpdateBlock
---     :: HasConfiguration
---     => Block -> UpdateBlock
--- toUpdateBlock = toComponentBlock (view mainBlockUpdatePayload)
-
--- toTxpBlock = toComponentBlock (view mainBlockTxPayload)
+toUpdateBlock
+    :: HasConfiguration
+    => Block -> UpdateBlock
+toUpdateBlock = toComponentBlock (view mainBlockUpdatePayload)
 
 -- [CSL-1156] Yes, definitely need something more elegant.
 toTxpBlund
@@ -260,10 +252,10 @@ toTxpBlund
 toTxpBlund = bimap toTxpBlock undoTx
 
 -- [CSL-1156] Sure, totally need something more elegant.
-toUpdateBlock
-    :: HasConfiguration
-    => Block -> UpdateBlock
-toUpdateBlock = bimap convertGenesis (convertMain mbUpdatePayload)
+-- toUpdateBlock
+--     :: HasConfiguration
+--     => Block -> UpdateBlock
+-- toUpdateBlock = bimap convertGenesis (convertMain mbUpdatePayload)
 
 -- [CSL-1156] Totally need something more elegant.
 toSscBlock
